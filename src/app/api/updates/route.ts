@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { isAuthorized } from "@/lib/auth";
+import { parseKidId } from "@/lib/kids";
 import { createUpdate, listUpdates } from "@/lib/store";
 import type { CreateUpdateInput } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const updates = await listUpdates();
-  return NextResponse.json({ updates });
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const kid = parseKidId(searchParams.get("kid"));
+  const updates = await listUpdates(kid ?? undefined);
+  return NextResponse.json({ updates, kid });
 }
 
 export async function POST(request: Request) {

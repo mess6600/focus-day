@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { KidId } from "@/lib/kids";
 import type { StudyUpdate } from "@/lib/types";
 import { formatFocusDate, formatShortDate } from "@/lib/dates";
 
@@ -44,10 +45,11 @@ export function HistoryList({ updates, skipFirst = false, limit }: HistoryListPr
 }
 
 type HistoryTeaserProps = {
+  kid: KidId;
   updates: StudyUpdate[];
 };
 
-export function HistoryTeaser({ updates }: HistoryTeaserProps) {
+export function HistoryTeaser({ kid, updates }: HistoryTeaserProps) {
   const older = updates.slice(1, 4);
   if (older.length === 0) return null;
 
@@ -61,7 +63,7 @@ export function HistoryTeaser({ updates }: HistoryTeaserProps) {
         <HistoryList updates={updates} skipFirst limit={3} />
         {updates.length > 4 ? (
           <p className="teaser-more">
-            <Link href="/history">Browse all past days</Link>
+            <Link href={`/history?kid=${kid}`}>Browse all past days</Link>
           </p>
         ) : null}
       </div>

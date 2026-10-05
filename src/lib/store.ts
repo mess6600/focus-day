@@ -3,6 +3,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { Redis } from "@upstash/redis";
 import { get, put } from "@vercel/blob";
+import type { KidId } from "./kids";
+import { parseKidId } from "./kids";
 import type { CreateUpdateInput, StudyUpdate } from "./types";
 import { isValidIsoDate, todayIso } from "./dates";
 
@@ -42,46 +44,70 @@ function getRedis(): Redis {
   return Redis.fromEnv();
 }
 
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysAheadIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 const seedUpdates: StudyUpdate[] = [
   {
-    id: "seed-math-fractions",
+    id: "seed-mohit-math",
     createdAt: new Date().toISOString(),
+    kid: "mohit",
     focusDate: todayIso(),
     subject: "Math",
     title: "Practice fraction word problems",
     body: "Do pages 42–43 in your workbook. Focus on mixed numbers and simplifying answers. Check each problem by estimating first.",
-    testDate: undefined,
   },
   {
-    id: "seed-science-habitats",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    focusDate: (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      return d.toISOString().slice(0, 10);
-    })(),
-    subject: "Science",
-    title: "Review animal habitats",
-    body: "Know desert, ocean, forest, and rainforest. For each one, name two animals and one way they survive there.",
-    testDate: (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 3);
-      return d.toISOString().slice(0, 10);
-    })(),
-  },
-  {
-    id: "seed-reading-chapter",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-    focusDate: (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 2);
-      return d.toISOString().slice(0, 10);
-    })(),
+    id: "seed-amrit-reading",
+    createdAt: new Date().toISOString(),
+    kid: "amrit",
+    focusDate: todayIso(),
     subject: "Reading",
     title: "Finish chapter 6 and pick a favorite scene",
     body: "Read to the end of chapter 6. Be ready to tell one thing a character learned and why that scene mattered.",
   },
+  {
+    id: "seed-mohit-science",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+    kid: "mohit",
+    focusDate: daysAgoIso(1),
+    subject: "Science",
+    title: "Review animal habitats",
+    body: "Know desert, ocean, forest, and rainforest. For each one, name two animals and one way they survive there.",
+    testDate: daysAheadIso(3),
+  },
+  {
+    id: "seed-amrit-math",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+    kid: "amrit",
+    focusDate: daysAgoIso(1),
+    subject: "Math",
+    title: "Multiplication facts through 12",
+    body: "Practice the 7s and 8s for 10 minutes. Then do workbook page 18.",
+    testDate: daysAheadIso(2),
+  },
 ];
+
+function normalizeUpdate(raw: StudyUpdate & { kid?: string }): StudyUpdate | null {
+  const kid = parseKidId(raw.kid);
+  if (!kid) return null;
+  return { ...raw, kid };
+}
+
+function normalizeUpdates(raw: StudyUpdate[]): StudyUpdate[] {
+  return raw
+    .map((entry) => normalizeUpdate(entry))
+    .filter((entry): entry is StudyUpdate => Boolean(entry));
+}
 
 async function ensureLocalFile(): Promise<void> {
   try {
@@ -125,7 +151,15 @@ async function writeToBlob(updates: StudyUpdate[]): Promise<void> {
 async function readAll(): Promise<StudyUpdate[]> {
   if (hasBlob()) {
     const { found, updates } = await readFromBlob();
-    if (found) return updates;
+    if (found) {
+      const normalized = normalizeUpdates(updates);
+      // If older posts had no kid field, keep storage intact but only return valid kid posts
+      if (normalized.length === 0 && updates.length > 0) {
+        await writeToBlob(seedUpdates);
+        return seedUpdates;
+      }
+      return normalized;
+    }
     await writeToBlob(seedUpdates);
     return seedUpdates;
   }
@@ -137,12 +171,12 @@ async function readAll(): Promise<StudyUpdate[]> {
       await redis.set(REDIS_KEY, seedUpdates);
       return seedUpdates;
     }
-    return raw;
+    return normalizeUpdates(raw);
   }
 
   await ensureLocalFile();
   const text = await fs.readFile(LOCAL_FILE, "utf8");
-  return JSON.parse(text) as StudyUpdate[];
+  return normalizeUpdates(JSON.parse(text) as StudyUpdate[]);
 }
 
 async function writeAll(updates: StudyUpdate[]): Promise<void> {
@@ -169,19 +203,26 @@ function sortUpdates(updates: StudyUpdate[]): StudyUpdate[] {
   });
 }
 
-export async function listUpdates(): Promise<StudyUpdate[]> {
-  return sortUpdates(await readAll());
+export async function listUpdates(kid?: KidId): Promise<StudyUpdate[]> {
+  const all = sortUpdates(await readAll());
+  if (!kid) return all;
+  return all.filter((update) => update.kid === kid);
 }
 
-export async function getLatestUpdate(): Promise<StudyUpdate | null> {
-  const updates = await listUpdates();
+export async function getLatestUpdate(kid: KidId): Promise<StudyUpdate | null> {
+  const updates = await listUpdates(kid);
   return updates[0] ?? null;
 }
 
 export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdate> {
+  const kid = parseKidId(typeof input.kid === "string" ? input.kid : undefined);
   const subject = input.subject?.trim();
   const title = input.title?.trim();
   const body = input.body?.trim();
+
+  if (!kid) {
+    throw new Error('kid is required and must be "mohit" or "amrit"');
+  }
 
   if (!subject || !title || !body) {
     throw new Error("subject, title, and body are required");
@@ -198,6 +239,7 @@ export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdat
   const update: StudyUpdate = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
+    kid,
     focusDate: input.focusDate && isValidIsoDate(input.focusDate) ? input.focusDate : todayIso(),
     subject,
     title,

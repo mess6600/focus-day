@@ -1,6 +1,10 @@
+import type { KidId } from "./kids";
+
 export type StudyUpdate = {
   id: string;
   createdAt: string;
+  /** Which kid this focus note is for */
+  kid: KidId;
   /** School day this update is meant for (YYYY-MM-DD) */
   focusDate: string;
   subject: string;
@@ -12,6 +16,7 @@ export type StudyUpdate = {
 };
 
 export type CreateUpdateInput = {
+  kid: KidId | string;
   subject: string;
   title: string;
   body: string;

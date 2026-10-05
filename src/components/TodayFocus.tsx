@@ -1,12 +1,15 @@
 import Link from "next/link";
+import type { KidId } from "@/lib/kids";
+import { kidLabel } from "@/lib/kids";
 import type { StudyUpdate } from "@/lib/types";
 import { formatFocusDate, formatShortDate } from "@/lib/dates";
 
 type TodayFocusProps = {
+  kid: KidId;
   update: StudyUpdate | null;
 };
 
-export function TodayFocus({ update }: TodayFocusProps) {
+export function TodayFocus({ kid, update }: TodayFocusProps) {
   if (!update) {
     return (
       <section className="hero" aria-labelledby="brand-title">
@@ -15,9 +18,12 @@ export function TodayFocus({ update }: TodayFocusProps) {
           <p className="brand-hero" id="brand-title">
             Focus Day
           </p>
-          <h1 className="hero-headline">Nothing posted yet</h1>
-          <p className="hero-support">
-            When your study helper posts today&apos;s plan, it will show up right here.
+          <p className="hero-meta animate-fade-up">
+            <span className="subject-tag">{kidLabel(kid)}</span>
+          </p>
+          <h1 className="hero-headline animate-fade-up delay-1">Nothing posted yet</h1>
+          <p className="hero-support animate-fade-up delay-2">
+            When your study helper posts {kidLabel(kid)}&apos;s plan, it will show up right here.
           </p>
         </div>
       </section>
@@ -32,7 +38,11 @@ export function TodayFocus({ update }: TodayFocusProps) {
           Focus Day
         </p>
         <p className="hero-meta animate-fade-up">
-          <span className="subject-tag">{update.subject}</span>
+          <span className="subject-tag">{kidLabel(kid)}</span>
+          <span className="meta-sep" aria-hidden="true">
+            ·
+          </span>
+          <span className="subject-tag subtle">{update.subject}</span>
           <span className="meta-sep" aria-hidden="true">
             ·
           </span>
@@ -46,7 +56,7 @@ export function TodayFocus({ update }: TodayFocusProps) {
           </p>
         ) : null}
         <div className="hero-actions animate-fade-up delay-3">
-          <Link href="/history" className="cta-secondary">
+          <Link href={`/history?kid=${kid}`} className="cta-secondary">
             See past days
           </Link>
         </div>

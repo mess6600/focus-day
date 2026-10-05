@@ -7,15 +7,15 @@ A simple Vercel site for kids: open it and see **what to study today**. An exter
 | Piece | Choice | Why |
 | --- | --- | --- |
 | Hosting | Next.js on Vercel | Free, fast, one-click deploy |
-| Kid view | Homepage = newest focus only | One job: “what should I do now?” |
-| History | `/history` + short teaser on home | Old material without cluttering today |
+| Kid view | Pick Mohit or Amrit, then newest focus for that kid | Each child only sees their own board |
+| History | `/history?kid=…` + short teaser on home | Old material without cluttering today |
 | Agent input | `POST /api/updates` + Bearer token | Any outside agent/script can post daily |
-| Storage | Upstash Redis in production; local JSON in dev | Survives serverless; zero setup locally |
+| Storage | Vercel Blob in production; local JSON in dev | Survives serverless |
 
 Flow:
 
-1. Outside agent posts today’s subject, title, and study notes.
-2. Child opens the site → hero shows that latest focus.
+1. Outside agent posts today’s notes with `"kid": "mohit"` or `"kid": "amrit"`.
+2. Child opens the site → picks their name → hero shows their latest focus.
 3. Child taps **Past days** when they need something older.
 
 ## Quick start (local)
@@ -36,6 +36,7 @@ curl -X POST http://localhost:3000/api/updates \
   -H "Authorization: Bearer $AGENT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
+    "kid": "mohit",
     "subject": "Math",
     "title": "Multiplication facts through 12",
     "body": "Practice the 7s and 8s for 10 minutes. Then do workbook page 18.",
@@ -47,7 +48,7 @@ curl -X POST http://localhost:3000/api/updates \
 ### List updates
 
 ```bash
-curl http://localhost:3000/api/updates
+curl "http://localhost:3000/api/updates?kid=amrit"
 ```
 
 ## Deploy to Vercel
@@ -67,6 +68,7 @@ Without Redis, Vercel’s filesystem is ephemeral — posts would not stick. Red
 
 ```json
 {
+  "kid": "amrit",
   "subject": "Science",
   "title": "Review the water cycle",
   "body": "Be able to explain evaporation, condensation, precipitation.",
@@ -75,8 +77,9 @@ Without Redis, Vercel’s filesystem is ephemeral — posts would not stick. Red
 }
 ```
 
+- `kid` — required: `"mohit"` or `"amrit"`
 - `subject`, `title`, `body` — required  
 - `focusDate`, `testDate` — optional `YYYY-MM-DD`  
 - Auth header: `Authorization: Bearer <AGENT_API_KEY>`
 
-`GET /api/updates` — public JSON list, newest first.
+`GET /api/updates?kid=mohit` — public JSON list for that kid, newest first.
