@@ -9,9 +9,19 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-export function todayIso(timeZone = process.env.FOCUS_TIMEZONE || "America/New_York"): string {
+function resolveTimeZone(timeZone?: string): string {
+  const candidate = (timeZone || process.env.FOCUS_TIMEZONE || "America/New_York").trim();
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate });
+    return candidate;
+  } catch {
+    return "America/New_York";
+  }
+}
+
+export function todayIso(timeZone?: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
+    timeZone: resolveTimeZone(timeZone),
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -7,7 +7,7 @@ A simple Vercel site for kids: open it and see **what to study today**. An exter
 | Piece | Choice | Why |
 | --- | --- | --- |
 | Hosting | Next.js on Vercel | Free, fast, one-click deploy |
-| Kid view | Pick Mohit or Amrit, then newest focus for that kid | Each child only sees their own board |
+| Kid view | Pick Mohit or Amrit; board splits Due now / Coming up | Each child only sees their own board |
 | History | `/history?kid=…` + short teaser on home | Old material without cluttering today |
 | Agent input | `POST /api/updates` + Bearer token | Any outside agent/script can post daily |
 | Storage | Vercel Blob in production; local JSON in dev | Survives serverless |

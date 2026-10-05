@@ -29,7 +29,7 @@ export function SiteHeader({ active = "today", kid }: SiteHeaderProps) {
             href={`/?kid=${kid}`}
             className={active === "today" ? "nav-link is-active" : "nav-link"}
           >
-            Today
+            Board
           </Link>
           <Link
             href={`/history?kid=${kid}`}
