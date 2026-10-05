@@ -2,11 +2,35 @@ import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { Redis } from "@upstash/redis";
+import { get, put } from "@vercel/blob";
 import type { CreateUpdateInput, StudyUpdate } from "./types";
 import { isValidIsoDate, todayIso } from "./dates";
 
 const REDIS_KEY = "focus-day:updates";
+const BLOB_PATHNAME = "focus-day/updates.json";
 const LOCAL_FILE = path.join(process.cwd(), "data", "updates.json");
+
+function hasBlob(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+async function streamToText(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) chunks.push(value);
+  }
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return new TextDecoder().decode(merged);
+}
 
 function hasRedis(): boolean {
   return Boolean(
@@ -72,7 +96,40 @@ async function ensureLocalFile(): Promise<void> {
   }
 }
 
+async function readFromBlob(): Promise<{ found: boolean; updates: StudyUpdate[] }> {
+  const result = await get(BLOB_PATHNAME, {
+    access: "private",
+    useCache: false,
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+
+  if (!result || !result.stream) {
+    return { found: false, updates: [] };
+  }
+
+  const text = await streamToText(result.stream);
+  const data = JSON.parse(text) as StudyUpdate[];
+  return { found: true, updates: Array.isArray(data) ? data : [] };
+}
+
+async function writeToBlob(updates: StudyUpdate[]): Promise<void> {
+  await put(BLOB_PATHNAME, JSON.stringify(updates, null, 2), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+}
+
 async function readAll(): Promise<StudyUpdate[]> {
+  if (hasBlob()) {
+    const { found, updates } = await readFromBlob();
+    if (found) return updates;
+    await writeToBlob(seedUpdates);
+    return seedUpdates;
+  }
+
   if (hasRedis()) {
     const redis = getRedis();
     const raw = await redis.get<StudyUpdate[]>(REDIS_KEY);
@@ -89,6 +146,11 @@ async function readAll(): Promise<StudyUpdate[]> {
 }
 
 async function writeAll(updates: StudyUpdate[]): Promise<void> {
+  if (hasBlob()) {
+    await writeToBlob(updates);
+    return;
+  }
+
   if (hasRedis()) {
     await getRedis().set(REDIS_KEY, updates);
     return;
