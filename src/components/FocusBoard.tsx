@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { BrandCrumb } from "@/components/BrandCrumb";
 import type { KidId } from "@/lib/kids";
-import { kidLabel } from "@/lib/kids";
 import { dueDateFor } from "@/lib/board";
 import { formatFocusDate, formatShortDate, todayIso } from "@/lib/dates";
 import { hasPractice, practiceLabel } from "@/lib/practice";
@@ -20,18 +20,15 @@ export function FocusBoard({ kid, dueNow, comingUp }: FocusBoardProps) {
       <section className="board-hero" aria-labelledby="brand-title">
         <div className="hero-atmosphere" aria-hidden="true" />
         <div className="section-inner board-hero-inner">
-          <p className="brand-hero" id="brand-title">
-            Focus Day
-          </p>
-          <p className="hero-meta animate-fade-up">
-            <span className="subject-tag">{kidLabel(kid)}</span>
-          </p>
+          <div className="animate-fade-up">
+            <BrandCrumb kid={kid} />
+          </div>
           <h1 className="board-headline animate-fade-up delay-1">
             {empty ? "Nothing on the board yet" : "What needs attention"}
           </h1>
           <p className="section-support animate-fade-up delay-2">
             {empty
-              ? `When your study helper posts for ${kidLabel(kid)}, it will show up in Due now or Coming up.`
+              ? "When your study helper posts, it will show up in Due now or Coming up."
               : "Due now is focus dates today or earlier. Coming up is everything still ahead."}
           </p>
         </div>

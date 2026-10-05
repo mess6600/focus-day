@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { BrandCrumb } from "@/components/BrandCrumb";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PracticeView } from "@/components/practice/PracticeView";
-import { formatFocusDate } from "@/lib/dates";
-import { kidLabel, parseKidId } from "@/lib/kids";
+import { boardHref } from "@/lib/kids";
+import { parseKidId } from "@/lib/kids";
 import { hasPractice, practiceLabel } from "@/lib/practice";
 import { getUpdateById } from "@/lib/store";
 
@@ -31,18 +32,12 @@ export default async function PracticePage({ params, searchParams }: PracticePag
       <main>
         <section className="practice-hero">
           <div className="section-inner">
-            <p className="brand-inline">Focus Day</p>
-            <p className="hero-meta">
-              <span className="subject-tag">{kidLabel(kid)}</span>
-              <span className="meta-sep" aria-hidden="true">
-                ·
-              </span>
-              <span className="subject-tag subtle">{update.subject}</span>
-              <span className="meta-sep" aria-hidden="true">
-                ·
-              </span>
-              <time dateTime={update.focusDate}>{formatFocusDate(update.focusDate)}</time>
-            </p>
+            <BrandCrumb
+              large
+              kid={kid}
+              subject={update.subject}
+              focusDate={update.focusDate}
+            />
             <h1 className="section-heading large">{update.title}</h1>
             <p className="section-support">{update.body}</p>
             {hasPractice(update.practice) ? (
@@ -63,8 +58,8 @@ export default async function PracticePage({ params, searchParams }: PracticePag
 
         <section className="practice-section">
           <div className="section-inner practice-footer-links">
-            <Link href={`/?kid=${kid}`} className="cta-secondary">
-              Back to today
+            <Link href={boardHref(kid)} className="cta-secondary">
+              Back to board
             </Link>
             <Link href={`/history?kid=${kid}`} className="text-link">
               Past days

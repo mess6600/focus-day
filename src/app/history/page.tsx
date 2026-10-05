@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { BrandCrumb } from "@/components/BrandCrumb";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HistoryList } from "@/components/HistoryList";
 import { kidLabel, parseKidId } from "@/lib/kids";
@@ -26,7 +27,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
       <main>
         <section className="history-hero">
           <div className="section-inner">
-            <p className="brand-inline">Focus Day</p>
+            <BrandCrumb large kid={kid} />
             <h1 className="section-heading large">{kidLabel(kid)}&apos;s past days</h1>
             <p className="section-support">
               Everything posted for {kidLabel(kid)}, newest first. Scroll back whenever you need a

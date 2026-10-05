@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KIDS, kidLabel, type KidId } from "@/lib/kids";
+import { boardHref, KIDS, kidLabel, startPageHref, type KidId } from "@/lib/kids";
 
 type SiteHeaderProps = {
   active?: "today" | "history";
@@ -9,7 +9,7 @@ type SiteHeaderProps = {
 export function SiteHeader({ active = "today", kid }: SiteHeaderProps) {
   return (
     <header className="site-header">
-      <Link href={`/?kid=${kid}`} className="brand-mark" aria-label="Focus Day home">
+      <Link href={startPageHref} className="brand-mark" aria-label="Focus Day home — choose student">
         Focus Day
       </Link>
       <div className="header-controls">
@@ -17,8 +17,9 @@ export function SiteHeader({ active = "today", kid }: SiteHeaderProps) {
           {KIDS.map((entry) => (
             <Link
               key={entry.id}
-              href={active === "history" ? `/history?kid=${entry.id}` : `/?kid=${entry.id}`}
+              href={active === "history" ? `/history?kid=${entry.id}` : boardHref(entry.id)}
               className={entry.id === kid ? "kid-chip is-active" : "kid-chip"}
+              aria-current={entry.id === kid ? "page" : undefined}
             >
               {entry.label}
             </Link>
@@ -26,7 +27,7 @@ export function SiteHeader({ active = "today", kid }: SiteHeaderProps) {
         </nav>
         <nav className="site-nav" aria-label="Main">
           <Link
-            href={`/?kid=${kid}`}
+            href={boardHref(kid)}
             className={active === "today" ? "nav-link is-active" : "nav-link"}
           >
             Board
@@ -36,6 +37,9 @@ export function SiteHeader({ active = "today", kid }: SiteHeaderProps) {
             className={active === "history" ? "nav-link is-active" : "nav-link"}
           >
             Past days
+          </Link>
+          <Link href={startPageHref} className="nav-link">
+            Home
           </Link>
         </nav>
       </div>
