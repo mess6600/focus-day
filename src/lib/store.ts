@@ -5,11 +5,12 @@ import { Redis } from "@upstash/redis";
 import { get, put } from "@vercel/blob";
 import type { KidId } from "./kids";
 import { parseKidId } from "./kids";
+import { normalizePractice } from "./practice";
 import type { CreateUpdateInput, StudyUpdate } from "./types";
 import { isValidIsoDate, todayIso } from "./dates";
 
 const REDIS_KEY = "focus-day:updates";
-const BLOB_PATHNAME = "focus-day/updates.json";
+const BLOB_PATHNAME = "focus-day/updates-v2.json";
 const LOCAL_FILE = path.join(process.cwd(), "data", "updates.json");
 
 function hasBlob(): boolean {
@@ -58,13 +59,32 @@ function daysAheadIso(days: number): string {
 
 const seedUpdates: StudyUpdate[] = [
   {
-    id: "seed-mohit-math",
+    id: "seed-mohit-matter",
     createdAt: new Date().toISOString(),
     kid: "mohit",
     focusDate: todayIso(),
-    subject: "Math",
-    title: "Practice fraction word problems",
-    body: "Do pages 42–43 in your workbook. Focus on mixed numbers and simplifying answers. Check each problem by estimating first.",
+    subject: "Science",
+    title: "Matter vocabulary — get ready for the quiz",
+    body: "Tap below to practice the Matter word list. Say each definition out loud, then check yourself.",
+    testDate: daysAheadIso(2),
+    practice: {
+      kind: "vocabulary",
+      title: "Matter word list",
+      words: [
+        { term: "matter", definition: "Anything that has mass and takes up space" },
+        { term: "solid", definition: "State of matter with a fixed shape and volume" },
+        { term: "liquid", definition: "State of matter with a fixed volume that takes the shape of its container" },
+        { term: "gas", definition: "State of matter with no fixed shape or volume" },
+        { term: "mass", definition: "The amount of matter in an object" },
+        { term: "volume", definition: "The amount of space something takes up" },
+        { term: "property", definition: "A characteristic used to describe matter" },
+        { term: "texture", definition: "How a surface feels" },
+        { term: "flexible", definition: "Able to bend without breaking" },
+        { term: "absorb", definition: "To soak up a liquid" },
+        { term: "dissolve", definition: "When a solid mixes into a liquid and seems to disappear" },
+        { term: "mixture", definition: "Two or more materials combined together" },
+      ],
+    },
   },
   {
     id: "seed-amrit-reading",
@@ -73,17 +93,64 @@ const seedUpdates: StudyUpdate[] = [
     focusDate: todayIso(),
     subject: "Reading",
     title: "Finish chapter 6 and pick a favorite scene",
-    body: "Read to the end of chapter 6. Be ready to tell one thing a character learned and why that scene mattered.",
+    body: "Read to the end of chapter 6. Tap for a short check quiz when you’re done.",
+    practice: {
+      kind: "quiz",
+      title: "Chapter 6 check",
+      questions: [
+        {
+          prompt: "What is one thing a character learned in chapter 6?",
+          choices: [
+            "A lesson about friendship or honesty",
+            "How to bake bread",
+            "The capital of France",
+            "Nothing changed",
+          ],
+          answer: 0,
+          explanation: "Look for a moment where a character understands something new.",
+        },
+        {
+          prompt: "Why did your favorite scene matter to the story?",
+          choices: [
+            "It moved the plot or showed character growth",
+            "It was only funny",
+            "It listed vocabulary words",
+            "It was the cover art",
+          ],
+          answer: 0,
+        },
+      ],
+    },
   },
   {
-    id: "seed-mohit-science",
+    id: "seed-mohit-math",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
     kid: "mohit",
     focusDate: daysAgoIso(1),
-    subject: "Science",
-    title: "Review animal habitats",
-    body: "Know desert, ocean, forest, and rainforest. For each one, name two animals and one way they survive there.",
-    testDate: daysAheadIso(3),
+    subject: "Math",
+    title: "Practice fraction word problems",
+    body: "Do pages 42–43 in your workbook. Focus on mixed numbers and simplifying answers.",
+    practice: {
+      kind: "quiz",
+      title: "Fraction warm-up",
+      questions: [
+        {
+          prompt: "Which fraction is equivalent to 1/2?",
+          choices: ["2/4", "1/3", "3/5", "2/5"],
+          answer: 0,
+        },
+        {
+          prompt: "What should you do first on a fraction word problem?",
+          choices: [
+            "Estimate and note what the question asks",
+            "Add every number you see",
+            "Skip to the last sentence only",
+            "Draw a random shape",
+          ],
+          answer: 0,
+        },
+      ],
+    },
   },
   {
     id: "seed-amrit-math",
@@ -94,13 +161,31 @@ const seedUpdates: StudyUpdate[] = [
     title: "Multiplication facts through 12",
     body: "Practice the 7s and 8s for 10 minutes. Then do workbook page 18.",
     testDate: daysAheadIso(2),
+    practice: {
+      kind: "flashcards",
+      title: "7s and 8s",
+      words: [
+        { term: "7 × 6", definition: "42" },
+        { term: "7 × 8", definition: "56" },
+        { term: "8 × 8", definition: "64" },
+        { term: "8 × 9", definition: "72" },
+        { term: "7 × 9", definition: "63" },
+        { term: "8 × 7", definition: "56" },
+      ],
+    },
   },
 ];
 
-function normalizeUpdate(raw: StudyUpdate & { kid?: string }): StudyUpdate | null {
+function normalizeUpdate(raw: StudyUpdate & { kid?: string; practice?: unknown }): StudyUpdate | null {
   const kid = parseKidId(raw.kid);
   if (!kid) return null;
-  return { ...raw, kid };
+  const practice = normalizePractice(raw.practice);
+  const { practice: _ignored, ...rest } = raw;
+  return {
+    ...rest,
+    kid,
+    ...(practice ? { practice } : {}),
+  };
 }
 
 function normalizeUpdates(raw: StudyUpdate[]): StudyUpdate[] {
@@ -214,6 +299,11 @@ export async function getLatestUpdate(kid: KidId): Promise<StudyUpdate | null> {
   return updates[0] ?? null;
 }
 
+export async function getUpdateById(id: string): Promise<StudyUpdate | null> {
+  const updates = await readAll();
+  return updates.find((update) => update.id === id) ?? null;
+}
+
 export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdate> {
   const kid = parseKidId(typeof input.kid === "string" ? input.kid : undefined);
   const subject = input.subject?.trim();
@@ -236,6 +326,18 @@ export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdat
     throw new Error("testDate must be YYYY-MM-DD");
   }
 
+  const shortcutUrl = (input.url || input.link || "").trim();
+  const practice = normalizePractice(
+    input.practice ||
+      (shortcutUrl
+        ? {
+            kind: input.documentType ? "document" : "link",
+            url: shortcutUrl,
+            documentType: input.documentType,
+          }
+        : undefined),
+  );
+
   const update: StudyUpdate = {
     id: randomUUID(),
     createdAt: new Date().toISOString(),
@@ -245,6 +347,7 @@ export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdat
     title,
     body,
     ...(input.testDate ? { testDate: input.testDate } : {}),
+    ...(practice ? { practice } : {}),
   };
 
   const existing = await readAll();

@@ -68,18 +68,37 @@ Without Redis, Vercel’s filesystem is ephemeral — posts would not stick. Red
 
 ```json
 {
-  "kid": "amrit",
+  "kid": "mohit",
   "subject": "Science",
-  "title": "Review the water cycle",
-  "body": "Be able to explain evaporation, condensation, precipitation.",
-  "focusDate": "2026-10-04",
-  "testDate": "2026-10-08"
+  "title": "Matter vocabulary — get ready for the quiz",
+  "body": "Tap to practice the Matter word list.",
+  "testDate": "2026-10-08",
+  "practice": {
+    "kind": "vocabulary",
+    "title": "Matter word list",
+    "words": [
+      { "term": "matter", "definition": "Anything that has mass and takes up space" },
+      { "term": "solid", "definition": "Fixed shape and volume" }
+    ],
+    "url": "https://example.com/slides-or-canvas-link",
+    "documentType": "slides"
+  }
 }
 ```
 
+Practice `kind` values:
+- `quiz` — `questions: [{ prompt, choices, answer, explanation }]`
+- `vocabulary` — tap-to-reveal word list (`words`)
+- `flashcards` — flip cards (`words` as prompt/answer)
+- `link` / `document` — open Canvas, Google Doc, PDF, slides (`url`, optional `documentType`: `pdf|gdoc|slides|canvas|webpage|image`)
+
+Shortcuts: top-level `url` / `link` (+ optional `documentType`) instead of a full `practice` object.
+
 - `kid` — required: `"mohit"` or `"amrit"`
 - `subject`, `title`, `body` — required  
-- `focusDate`, `testDate` — optional `YYYY-MM-DD`  
+- `focusDate`, `testDate`, `practice` — optional  
 - Auth header: `Authorization: Bearer <AGENT_API_KEY>`
+
+Kids tap a focus item → `/practice/[id]` for quiz/vocab/docs.
 
 `GET /api/updates?kid=mohit` — public JSON list for that kid, newest first.

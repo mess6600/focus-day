@@ -36,7 +36,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         </section>
         <section className="history-section">
           <div className="section-inner">
-            <HistoryList updates={updates} />
+            <HistoryList kid={kid} updates={updates} />
           </div>
         </section>
       </main>

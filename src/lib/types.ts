@@ -1,4 +1,5 @@
 import type { KidId } from "./kids";
+import type { PracticeContent } from "./practice";
 
 export type StudyUpdate = {
   id: string;
@@ -13,6 +14,8 @@ export type StudyUpdate = {
   body: string;
   /** Optional upcoming test date (YYYY-MM-DD) */
   testDate?: string;
+  /** Optional interactive practice or linked document */
+  practice?: PracticeContent;
 };
 
 export type CreateUpdateInput = {
@@ -22,4 +25,10 @@ export type CreateUpdateInput = {
   body: string;
   focusDate?: string;
   testDate?: string;
+  /** Full practice object, or pass top-level url for a simple link */
+  practice?: PracticeContent | Record<string, unknown>;
+  /** Convenience aliases Muse may send instead of practice.url */
+  url?: string;
+  link?: string;
+  documentType?: string;
 };

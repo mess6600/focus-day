@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { KidId } from "@/lib/kids";
 import { kidLabel } from "@/lib/kids";
+import { hasPractice, practiceLabel } from "@/lib/practice";
 import type { StudyUpdate } from "@/lib/types";
 import { formatFocusDate, formatShortDate } from "@/lib/dates";
 
@@ -30,6 +31,9 @@ export function TodayFocus({ kid, update }: TodayFocusProps) {
     );
   }
 
+  const practiceHref = `/practice/${update.id}?kid=${kid}`;
+  const canPractice = hasPractice(update.practice);
+
   return (
     <section className="hero" aria-labelledby="brand-title">
       <div className="hero-atmosphere" aria-hidden="true" />
@@ -48,14 +52,32 @@ export function TodayFocus({ kid, update }: TodayFocusProps) {
           </span>
           <time dateTime={update.focusDate}>{formatFocusDate(update.focusDate)}</time>
         </p>
-        <h1 className="hero-headline animate-fade-up delay-1">{update.title}</h1>
-        <p className="hero-support animate-fade-up delay-2">{update.body}</p>
+
+        {canPractice ? (
+          <Link href={practiceHref} className="focus-hit-area animate-fade-up delay-1">
+            <h1 className="hero-headline">{update.title}</h1>
+            <p className="hero-support">{update.body}</p>
+            <span className="focus-hit-hint">Tap to {practiceLabel(update.practice!).toLowerCase()} →</span>
+          </Link>
+        ) : (
+          <>
+            <h1 className="hero-headline animate-fade-up delay-1">{update.title}</h1>
+            <p className="hero-support animate-fade-up delay-2">{update.body}</p>
+          </>
+        )}
+
         {update.testDate ? (
           <p className="test-callout animate-fade-up delay-3">
             Test coming up: <time dateTime={update.testDate}>{formatShortDate(update.testDate)}</time>
           </p>
         ) : null}
+
         <div className="hero-actions animate-fade-up delay-3">
+          {canPractice ? (
+            <Link href={practiceHref} className="cta-primary">
+              {practiceLabel(update.practice!)}
+            </Link>
+          ) : null}
           <Link href={`/history?kid=${kid}`} className="cta-secondary">
             See past days
           </Link>

@@ -19,8 +19,11 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Remember last chosen kid when visiting bare / or /history
-  if ((pathname === "/" || pathname === "/history") && !searchParams.has("kid")) {
+  // Remember last chosen kid when visiting bare routes
+  if (
+    (pathname === "/" || pathname === "/history" || pathname.startsWith("/practice/")) &&
+    !searchParams.has("kid")
+  ) {
     const kidFromCookie = parseKidId(request.cookies.get(KID_COOKIE)?.value);
     if (kidFromCookie) {
       const url = request.nextUrl.clone();
@@ -33,5 +36,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/history"],
+  matcher: ["/", "/history", "/practice/:path*"],
 };
