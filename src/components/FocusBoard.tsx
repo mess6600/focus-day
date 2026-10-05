@@ -32,7 +32,7 @@ export function FocusBoard({ kid, dueNow, comingUp }: FocusBoardProps) {
           <p className="section-support animate-fade-up delay-2">
             {empty
               ? `When your study helper posts for ${kidLabel(kid)}, it will show up in Due now or Coming up.`
-              : "Due now is today or earlier. Coming up is everything still ahead."}
+              : "Due now is focus dates today or earlier. Coming up is everything still ahead."}
           </p>
         </div>
       </section>

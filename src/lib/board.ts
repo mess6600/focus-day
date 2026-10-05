@@ -1,9 +1,12 @@
 import type { StudyUpdate } from "./types";
 import { todayIso } from "./dates";
 
-/** Prefer test/due date; fall back to the focus day Muse assigned. */
+/**
+ * Board bucketing uses focusDate (when to start / work on it).
+ * testDate stays informational ("Test: …") and is only a fallback.
+ */
 export function dueDateFor(update: StudyUpdate): string {
-  return update.testDate || update.focusDate;
+  return update.focusDate || update.testDate || update.createdAt.slice(0, 10);
 }
 
 export function partitionBoard(
