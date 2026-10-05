@@ -31,4 +31,6 @@ export type CreateUpdateInput = {
   url?: string;
   link?: string;
   documentType?: string;
+  /** Convenience: top-level quiz questions => practice.kind=quiz */
+  questions?: unknown[];
 };

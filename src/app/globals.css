@@ -626,6 +626,11 @@ a {
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
+.choice-letter {
+  color: var(--sea);
+  font-weight: 800;
+}
+
 .choice-btn:hover,
 .vocab-row:hover,
 .flash-card:hover {

@@ -327,16 +327,28 @@ export async function createUpdate(input: CreateUpdateInput): Promise<StudyUpdat
   }
 
   const shortcutUrl = (input.url || input.link || "").trim();
-  const practice = normalizePractice(
-    input.practice ||
-      (shortcutUrl
-        ? {
-            kind: input.documentType ? "document" : "link",
-            url: shortcutUrl,
-            documentType: input.documentType,
-          }
-        : undefined),
-  );
+  const practiceSource =
+    input.practice && typeof input.practice === "object"
+      ? {
+          ...(input.practice as Record<string, unknown>),
+          ...(Array.isArray(input.questions) ? { questions: input.questions } : {}),
+          ...(shortcutUrl && !(input.practice as Record<string, unknown>).url
+            ? { url: shortcutUrl }
+            : {}),
+          ...(input.documentType && !(input.practice as Record<string, unknown>).documentType
+            ? { documentType: input.documentType }
+            : {}),
+        }
+      : Array.isArray(input.questions)
+        ? { kind: "quiz", questions: input.questions }
+        : shortcutUrl
+          ? {
+              kind: input.documentType ? "document" : "link",
+              url: shortcutUrl,
+              documentType: input.documentType,
+            }
+          : undefined;
+  const practice = normalizePractice(practiceSource);
 
   const update: StudyUpdate = {
     id: randomUUID(),

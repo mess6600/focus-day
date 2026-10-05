@@ -18,14 +18,7 @@ export function QuizPractice({ title, questions }: QuizPracticeProps) {
   const question = questions[index];
   if (!question) return null;
 
-  const correctIndex =
-    typeof question.answer === "number"
-      ? question.answer
-      : typeof question.answer === "string" && question.choices
-        ? question.choices.findIndex(
-            (choice) => choice.toLowerCase() === question.answer?.toString().toLowerCase(),
-          )
-        : -1;
+  const correctIndex = question.answer;
 
   function onChoose(choiceIndex: number) {
     if (revealed) return;
@@ -75,25 +68,24 @@ export function QuizPractice({ title, questions }: QuizPracticeProps) {
       </p>
       {title ? <h2 className="practice-title">{title}</h2> : null}
       <p className="practice-prompt">{question.prompt}</p>
-      {question.choices?.length ? (
-        <ul className="practice-choices">
-          {question.choices.map((choice, choiceIndex) => {
-            const isCorrect = revealed && choiceIndex === correctIndex;
-            const isWrong = revealed && selected === choiceIndex && choiceIndex !== correctIndex;
-            return (
-              <li key={`${choice}-${choiceIndex}`}>
-                <button
-                  type="button"
-                  className={`choice-btn${isCorrect ? " is-correct" : ""}${isWrong ? " is-wrong" : ""}`}
-                  onClick={() => onChoose(choiceIndex)}
-                >
-                  {choice}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+      <ul className="practice-choices">
+        {question.choices.map((choice, choiceIndex) => {
+          const isCorrect = revealed && choiceIndex === correctIndex;
+          const isWrong = revealed && selected === choiceIndex && choiceIndex !== correctIndex;
+          return (
+            <li key={`${choice}-${choiceIndex}`}>
+              <button
+                type="button"
+                className={`choice-btn${isCorrect ? " is-correct" : ""}${isWrong ? " is-wrong" : ""}`}
+                onClick={() => onChoose(choiceIndex)}
+              >
+                <span className="choice-letter">{String.fromCharCode(65 + choiceIndex)}.</span>{" "}
+                {choice}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
       {revealed && question.explanation ? (
         <p className="practice-explanation">{question.explanation}</p>
       ) : null}

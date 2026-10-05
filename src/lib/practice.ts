@@ -22,9 +22,9 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 export type QuizQuestion = {
   prompt: string;
-  choices?: string[];
-  /** Index into choices, or exact answer string for free response */
-  answer?: string | number;
+  choices: string[];
+  /** 0-based index into choices */
+  answer: number;
   explanation?: string;
 };
 
@@ -44,6 +44,34 @@ export type PracticeContent = {
   /** Optional longer study text / notes */
   notes?: string;
 };
+
+/** Canonical example Muse (or any agent) can copy. */
+export const QUIZ_FORMAT_EXAMPLE = {
+  kid: "amrit",
+  subject: "Science",
+  title: "Science checkpoint",
+  body: "Tap to take the physical vs chemical changes quiz.",
+  focusDate: "2026-10-07",
+  testDate: "2026-10-08",
+  practice: {
+    kind: "quiz",
+    title: "Physical vs chemical changes",
+    questions: [
+      {
+        prompt: "Melting butter is an example of a…",
+        choices: ["Physical change", "Chemical change"],
+        answer: 0,
+        explanation: "Only its state changes — no new substance forms.",
+      },
+      {
+        prompt: "Cooking pancakes is an example of a…",
+        choices: ["Physical change", "Chemical change"],
+        answer: 1,
+        explanation: "A new substance forms when batter cooks.",
+      },
+    ],
+  },
+} as const;
 
 export function isPracticeKind(value: unknown): value is PracticeKind {
   return typeof value === "string" && (PRACTICE_KINDS as readonly string[]).includes(value);
@@ -85,12 +113,16 @@ export function documentTypeLabel(value?: string): string | null {
     case "pdf":
       return "Open PDF";
     case "gdoc":
+    case "googledoc":
+    case "google_doc":
       return "Open Google Doc";
     case "slides":
+    case "gslides":
       return "Open slides";
     case "canvas":
       return "Open in Canvas";
     case "webpage":
+    case "web":
       return "Open webpage";
     case "image":
       return "Open image";
@@ -99,66 +131,181 @@ export function documentTypeLabel(value?: string): string | null {
   }
 }
 
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function normalizeDocumentType(value?: string): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "googledoc" || normalized === "google_doc" || normalized === "google-doc") {
+    return "gdoc";
+  }
+  if (normalized === "gslides" || normalized === "google_slides") return "slides";
+  if (normalized === "web") return "webpage";
+  return normalized;
+}
+
+function normalizeChoices(entry: Record<string, unknown>): string[] | undefined {
+  const raw =
+    entry.choices ??
+    entry.options ??
+    entry.answers ??
+    entry.choicesList ??
+    entry.multipleChoice;
+  if (!Array.isArray(raw)) return undefined;
+  const choices = raw
+    .map((choice) => {
+      if (typeof choice === "string") return choice.trim();
+      if (choice && typeof choice === "object") {
+        const obj = choice as Record<string, unknown>;
+        return asString(obj.text) || asString(obj.label) || asString(obj.value) || "";
+      }
+      return "";
+    })
+    .filter(Boolean);
+  return choices.length ? choices : undefined;
+}
+
+function resolveAnswerIndex(
+  entry: Record<string, unknown>,
+  choices: string[],
+): number | undefined {
+  const raw =
+    entry.answer ??
+    entry.correct ??
+    entry.correctAnswer ??
+    entry.correctIndex ??
+    entry.answerIndex ??
+    entry.answerKey;
+
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    // Accept 0-based, or 1-based if it fits and 0 would be out of range usage
+    if (raw >= 0 && raw < choices.length) return raw;
+    if (raw >= 1 && raw <= choices.length) return raw - 1;
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    const letter = trimmed.toUpperCase();
+    if (/^[A-Z]$/.test(letter)) {
+      const index = letter.charCodeAt(0) - 65;
+      if (index >= 0 && index < choices.length) return index;
+    }
+    if (/^\d+$/.test(trimmed)) {
+      const num = Number(trimmed);
+      if (num >= 0 && num < choices.length) return num;
+      if (num >= 1 && num <= choices.length) return num - 1;
+    }
+    const byText = choices.findIndex(
+      (choice) => choice.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (byText >= 0) return byText;
+  }
+
+  return undefined;
+}
+
+function normalizeQuestions(rawQuestions: unknown): QuizQuestion[] | undefined {
+  if (!Array.isArray(rawQuestions)) return undefined;
+
+  const questions = rawQuestions
+    .map((question) => {
+      if (!question || typeof question !== "object") return null;
+      const entry = question as Record<string, unknown>;
+      const prompt =
+        asString(entry.prompt) ||
+        asString(entry.question) ||
+        asString(entry.text) ||
+        asString(entry.stem);
+      if (!prompt) return null;
+
+      const choices = normalizeChoices(entry);
+      if (!choices || choices.length < 2) return null;
+
+      const answer = resolveAnswerIndex(entry, choices);
+      if (answer === undefined) return null;
+
+      const explanation =
+        asString(entry.explanation) ||
+        asString(entry.why) ||
+        asString(entry.rationale) ||
+        asString(entry.feedback);
+
+      return {
+        prompt,
+        choices,
+        answer,
+        ...(explanation ? { explanation } : {}),
+      };
+    })
+    .filter((question): question is QuizQuestion => Boolean(question));
+
+  return questions.length ? questions : undefined;
+}
+
+function normalizeWords(rawWords: unknown): VocabWord[] | undefined {
+  if (!Array.isArray(rawWords)) return undefined;
+  const words = rawWords
+    .map((word) => {
+      if (!word || typeof word !== "object") return null;
+      const entry = word as Record<string, unknown>;
+      const term =
+        asString(entry.term) ||
+        asString(entry.word) ||
+        asString(entry.front) ||
+        asString(entry.prompt);
+      if (!term) return null;
+      const definition =
+        asString(entry.definition) ||
+        asString(entry.back) ||
+        asString(entry.answer) ||
+        asString(entry.meaning);
+      return { term, ...(definition ? { definition } : {}) };
+    })
+    .filter((word): word is VocabWord => Boolean(word));
+  return words.length ? words : undefined;
+}
+
+function resolveKind(raw: string | undefined): PracticeKind | null {
+  if (!raw) return null;
+  const value = raw.toLowerCase().trim();
+  if (isPracticeKind(value)) return value;
+  if (
+    value === "multiple_choice" ||
+    value === "multiple-choice" ||
+    value === "mcq" ||
+    value === "checkpoint" ||
+    value === "test"
+  ) {
+    return "quiz";
+  }
+  if (value === "vocab" || value === "words") return "vocabulary";
+  if (value === "cards" || value === "flashcard") return "flashcards";
+  if (value === "doc" || value === "file") return "document";
+  return null;
+}
+
 export function normalizePractice(raw: unknown): PracticeContent | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const input = raw as Record<string, unknown>;
 
-  const kindRaw = typeof input.kind === "string" ? input.kind.toLowerCase() : "";
-  let kind: PracticeKind | null = isPracticeKind(kindRaw) ? kindRaw : null;
+  let kind = resolveKind(asString(input.kind) || asString(input.type));
 
-  const url = typeof input.url === "string" ? input.url.trim() : undefined;
-  const title = typeof input.title === "string" ? input.title.trim() : undefined;
-  const notes = typeof input.notes === "string" ? input.notes.trim() : undefined;
-  const documentType =
-    typeof input.documentType === "string" ? input.documentType.trim().toLowerCase() : undefined;
+  const url = asString(input.url) || asString(input.link) || asString(input.href);
+  const title = asString(input.title);
+  const notes = asString(input.notes) || asString(input.description);
+  const documentType = normalizeDocumentType(
+    asString(input.documentType) || asString(input.docType) || asString(input.sourceType),
+  );
 
-  const words = Array.isArray(input.words)
-    ? input.words
-        .map((word) => {
-          if (!word || typeof word !== "object") return null;
-          const entry = word as Record<string, unknown>;
-          const term = typeof entry.term === "string" ? entry.term.trim() : "";
-          if (!term) return null;
-          const definition =
-            typeof entry.definition === "string" ? entry.definition.trim() : undefined;
-          return { term, ...(definition ? { definition } : {}) };
-        })
-        .filter((word): word is VocabWord => Boolean(word))
-    : undefined;
+  const words = normalizeWords(input.words || input.cards || input.flashcards || input.terms);
+  const questions = normalizeQuestions(
+    input.questions || input.items || input.quiz || input.multipleChoiceQuestions,
+  );
 
-  const questions = Array.isArray(input.questions)
-    ? input.questions
-        .map((question) => {
-          if (!question || typeof question !== "object") return null;
-          const entry = question as Record<string, unknown>;
-          const prompt = typeof entry.prompt === "string" ? entry.prompt.trim() : "";
-          if (!prompt) return null;
-          const choices = Array.isArray(entry.choices)
-            ? entry.choices
-                .filter((choice): choice is string => typeof choice === "string")
-                .map((choice) => choice.trim())
-                .filter(Boolean)
-            : undefined;
-          const explanation =
-            typeof entry.explanation === "string" ? entry.explanation.trim() : undefined;
-          const answer =
-            typeof entry.answer === "string" || typeof entry.answer === "number"
-              ? entry.answer
-              : undefined;
-          return {
-            prompt,
-            ...(choices?.length ? { choices } : {}),
-            ...(answer !== undefined ? { answer } : {}),
-            ...(explanation ? { explanation } : {}),
-          };
-        })
-        .filter((question): question is QuizQuestion => Boolean(question))
-    : undefined;
-
-  // Convenience: if Muse only sends url, treat as link/document
-  if (!kind && url) {
-    kind = documentType ? "document" : "link";
-  }
+  // Convenience inference
+  if (!kind && url) kind = documentType ? "document" : "link";
   if (!kind && words?.length) kind = "vocabulary";
   if (!kind && questions?.length) kind = "quiz";
   if (!kind) return undefined;

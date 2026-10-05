@@ -87,10 +87,15 @@ Without Redis, Vercel’s filesystem is ephemeral — posts would not stick. Red
 ```
 
 Practice `kind` values:
-- `quiz` — `questions: [{ prompt, choices, answer, explanation }]`
+- `quiz` — multiple choice: `questions: [{ prompt, choices, answer, explanation }]`
 - `vocabulary` — tap-to-reveal word list (`words`)
 - `flashcards` — flip cards (`words` as prompt/answer)
 - `link` / `document` — open Canvas, Google Doc, PDF, slides (`url`, optional `documentType`: `pdf|gdoc|slides|canvas|webpage|image`)
+
+**Quiz `answer` accepts:** `0`-based index, `1`-based index, letter (`"A"`), or exact choice text.  
+Aliases: `question`/`options`/`correct`/`why`, and top-level `questions`.
+
+Fetch the live schema any time: `GET /api/practice-format`
 
 Shortcuts: top-level `url` / `link` (+ optional `documentType`) instead of a full `practice` object.
 
